@@ -15,36 +15,37 @@ public class Ioc {
 
     private Ioc() {}
 
-    static CalculationService createLoggedCalculator() {
-        InvocationHandler handler = new CalculationInvocationHandler(new Calculator());
-        return (CalculationService)
-                Proxy.newProxyInstance(Ioc.class.getClassLoader(), new Class<?>[] {CalculationService.class}, handler);
+    @SuppressWarnings("unchecked")
+    static <T> T createLoggingProxy(T obj) {
+        InvocationHandler handler = new LoggingInvocationHandler(obj);
+        return (T) Proxy.newProxyInstance(
+                Ioc.class.getClassLoader(), obj.getClass().getInterfaces(), handler);
     }
 
-    static class CalculationInvocationHandler implements InvocationHandler {
-        private final CalculationService calculator;
+    static class LoggingInvocationHandler implements InvocationHandler {
+        private final Object target;
         private final Set<Method> loggedMethods;
 
-        CalculationInvocationHandler(CalculationService calculator) {
-            this.calculator = calculator;
-            this.loggedMethods = findLoggedMethods(calculator);
+        LoggingInvocationHandler(Object target) {
+            this.target = target;
+            this.loggedMethods = findLoggedMethods(target);
         }
 
-        private Set<Method> findLoggedMethods(CalculationService calculator) {
-            return Arrays.stream(calculator.getClass().getMethods())
+        private Set<Method> findLoggedMethods(Object target) {
+            return Arrays.stream(target.getClass().getMethods())
                     .filter(method -> method.isAnnotationPresent(Log.class))
                     .collect(Collectors.toSet());
         }
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            Method realMethod = calculator.getClass().getMethod(method.getName(), method.getParameterTypes());
+            Method realMethod = target.getClass().getMethod(method.getName(), method.getParameterTypes());
 
             if (loggedMethods.contains(realMethod)) {
                 printLogMessage(method, args);
             }
 
-            return method.invoke(calculator, args);
+            return method.invoke(target, args);
         }
 
         private void printLogMessage(Method method, Object[] args) {

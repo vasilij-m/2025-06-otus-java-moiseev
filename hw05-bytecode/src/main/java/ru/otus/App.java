@@ -3,7 +3,7 @@ package ru.otus;
 public class App {
 
     public static void main(String[] args) {
-        CalculationService loggedCalculator = Ioc.createLoggedCalculator();
+        CalculationService loggedCalculator = Ioc.createLoggingProxy(new Calculator());
 
         loggedCalculator.calculation(1);
         loggedCalculator.calculation(2, 3);
